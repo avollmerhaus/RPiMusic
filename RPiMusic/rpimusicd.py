@@ -14,7 +14,6 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s %(name)s: %(message)
                     handlers=[logging.StreamHandler(sys.stdout)])
 logger = logging.getLogger('RPiMusic')
 
-
 class RPiMusic:
     STARTUP_TIMEOUT = 3
     PLAYER = '/usr/bin/mpv'
@@ -115,37 +114,41 @@ class RPiMusic:
         except (AttributeError, pika.exceptions.ConnectionClosed, pika.exceptions.ChannelClosed):
             pass
 
-if __name__ == '__main__':
+def rpimusicd():
     exitcode = 255
+    try:
+        parser = argparse.ArgumentParser(description='Play URLs from AMQP messages via mpv, cache URLs')
+        parser.add_argument('--config', metavar='config', type=str, required=True, help='path to config file')
+        parser.add_argument('--debug', dest='debug', action='store_true', required=False, default=False,
+                            help='Activate debugging output')
+        cliargs = parser.parse_args()
 
-    parser = argparse.ArgumentParser(description='Play URLs from AMQP messages via mpv, cache URLs')
-    parser.add_argument('--config', metavar='config', type=str, required=True, help='path to config file')
-    parser.add_argument('--debug', dest='debug', action='store_true', required=False, default=False,
-                        help='Activate debugging output')
-    cliargs = parser.parse_args()
+        if cliargs.debug:
+            logger.setLevel(logging.DEBUG)
+            logger.info('Loglevel set to DEBUG')
 
-    if cliargs.debug:
-        logger.setLevel(logging.DEBUG)
-        logger.info('Loglevel set to DEBUG')
+        worker = RPiMusic(cliargs.config)
+        exitcode = 3
 
-    worker = RPiMusic(cliargs.config)
-    exitcode = 3
+        while not worker.exit_flag:
+            try:
+                worker.setup_amqp_connection()
+                signal.signal(signal.SIGTERM, worker.stop)
+                signal.signal(signal.SIGINT, worker.stop)
+                worker.start()
+            except pika.exceptions.ConnectionClosed as err:
+                logger.error('lost rabbitmq connection, reconnecting in 2s. reason: %s', str(err))
+                sleep(5)
+            except Exception as err:
+                logger.error('caught fatal error: %s', err, exc_info=cliargs.debug)
+                exitcode = 1
+                worker.stop()
+                break
+            else:
+                exitcode = 0
+    finally:
+        logging.shutdown()
+        sys.exit(exitcode)
 
-    while not worker.exit_flag:
-        try:
-            worker.setup_amqp_connection()
-            signal.signal(signal.SIGTERM, worker.stop)
-            signal.signal(signal.SIGINT, worker.stop)
-            worker.start()
-        except pika.exceptions.ConnectionClosed as err:
-            logger.error('lost rabbitmq connection, reconnecting in 2s. reason: %s', str(err))
-            sleep(5)
-        except Exception as err:
-            logger.error('caught fatal error: %s', err, exc_info=cliargs.debug)
-            exitcode = 1
-            worker.stop()
-            break
-        else:
-            exitcode = 0
-    logging.shutdown()
-    sys.exit(exitcode)
+if __name__ == '__main__':
+    rpimusicd()
