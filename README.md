@@ -27,7 +27,7 @@ After=network-online.target
 [Service]
 Type=simple
 User=rpimusic
-ExecStart=/opt/venv/bin/rpimusicd.py --config /etc/rpimusic.conf
+ExecStart=/opt/venv/bin/rpimusicd --config /etc/rpimusic.conf
 Restart=on-failure
 RestartSec=30
 RestartPreventExitStatus=255
