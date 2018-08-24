@@ -3,6 +3,7 @@ RPiMusic
 
 Get AMQP message, play URL (via mpv, currently).
 This script creates an exchange and a queue in the specified AMQP vhost.
+Only ssl-enabled AMQP connections are supported.
 The exchange is named "Xall", type direct.
 The queue is named "RPiMusic_<uuid>", with uuid being the uuid from the config file.
 
