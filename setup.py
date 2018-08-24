@@ -5,9 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="RPiMusic",
-    version="0.0.4",
-    install_requires=['pika'],
-    packages=setuptools.find_packages(),
+    version="0.0.5",
     author="Aljoscha Vollmerhaus",
     author_email='pydev@aljoscha.vollmerhaus.net',
     description="Play URLs from AMQP messages via mpv",
@@ -20,6 +18,9 @@ setuptools.setup(
         "Operating System :: POSIX :: Linux",
         "Environment :: Console"
     ],
+    install_requires=['pika'],
+    packages=setuptools.find_packages('src'),
+    package_dir={'':'src'},
     entry_points={
         'console_scripts': [ 'rpimusicd = RPiMusic.rpimusicd:rpimusicd', ],
     },
