@@ -74,8 +74,11 @@ class RPiMusic:
         except subprocess.TimeoutExpired:
             pass
         else:
-            logger.error('subprocess dead after %d seconds, assuming failure', RPiMusic.STARTUP_TIMEOUT)
-            raise subprocess.CalledProcessError(retcode, cmd=args)
+            if self.exit_flag:
+                pass
+            else:
+                logger.error('subprocess dead after %d seconds, assuming failure', RPiMusic.STARTUP_TIMEOUT)
+                raise subprocess.CalledProcessError(retcode, cmd=args)
 
     def _set_playlisturl(self, playlisturl):
         with open(self._url_cache_file, 'w') as fh:
