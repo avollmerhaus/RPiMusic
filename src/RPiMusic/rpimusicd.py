@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s %(name)s: %(message)
 logger = logging.getLogger('RPiMusic')
 
 class RPiMusic:
-    STARTUP_TIMEOUT = 3
+    STARTUP_TIMEOUT = 5
     PLAYER = '/usr/bin/mpv'
     PLAYER_ARGS = ['--no-terminal']
 

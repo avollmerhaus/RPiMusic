@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="RPiMusic",
-    version="0.0.6",
+    version="0.0.7",
     author="Aljoscha Vollmerhaus",
     author_email='pydev@aljoscha.vollmerhaus.net',
     description="Play URLs from AMQP messages via mpv",
