@@ -36,6 +36,8 @@ class RPiMusic:
             self._current_playlist_url = self._fallback_playlist_url
 
     def start(self):
+        logger.info('starting...')
+        self._setup_amqp_connection()
         self._setup_amqp_queue()
         self._start_player()
         self._amqp_channel.start_consuming()
@@ -86,10 +88,15 @@ class RPiMusic:
             fh.write(json.dumps(content))
         self._current_playlist_url = playlisturl
 
-    def _stop_player(self):
-        self._process.terminate()
-        self._process.communicate()
-        logger.info('stopped player')
+    def stop_player(self):
+        if self._process:
+            try:
+                self._process.terminate()
+                self._process.communicate(timeout=5)
+            except subprocess.TimeoutExpired:
+                self._process.kill()
+                self._process.communicate(timeout=5)
+            logger.info('stopped player')
 
     def _parse_config(self, configfile):
         with open(configfile, 'r') as fh:
@@ -99,7 +106,7 @@ class RPiMusic:
             self._fallback_playlist_url = jsondata['fallback_playlist_url']
             self._uuid = jsondata['uuid']
 
-    def setup_amqp_connection(self):
+    def _setup_amqp_connection(self):
         logger.info('connecting amqp')
         parameters = pika.URLParameters(self._amqp_url)
         parameters.ssl = True
@@ -114,6 +121,7 @@ class RPiMusic:
         self.exit_flag = True
         try:
             self._amqp_channel.close()
+            self.stop_player()
         except (AttributeError, pika.exceptions.ConnectionClosed, pika.exceptions.ChannelClosed):
             pass
 
@@ -131,16 +139,16 @@ def rpimusicd():
             logger.info('Loglevel set to DEBUG')
 
         worker = RPiMusic(cliargs.config)
+        signal.signal(signal.SIGTERM, worker.stop)
+        signal.signal(signal.SIGINT, worker.stop)
         exitcode = 3
 
         while not worker.exit_flag:
             try:
-                worker.setup_amqp_connection()
-                signal.signal(signal.SIGTERM, worker.stop)
-                signal.signal(signal.SIGINT, worker.stop)
                 worker.start()
             except pika.exceptions.ConnectionClosed as err:
-                logger.error('lost rabbitmq connection, reconnecting in 2s. reason: %s', str(err))
+                logger.error('lost rabbitmq connection, restarting in 2s. reason: %s', str(err))
+                worker.stop_player()
                 sleep(5)
             except Exception as err:
                 logger.error('caught fatal error: %s', err, exc_info=cliargs.debug)
